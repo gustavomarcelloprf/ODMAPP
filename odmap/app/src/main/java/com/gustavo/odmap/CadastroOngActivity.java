@@ -1,6 +1,7 @@
 package com.gustavo.odmap;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -21,30 +22,36 @@ public class CadastroOngActivity extends AppCompatActivity {
     private EditText editTextLongitude;
     private EditText editTextCnpj;
     private RadioGroup radioGroupODS;
+    private EditText editTextDescricao;
+    private EditText editTextTelefone;
+    private Button buttonImagem;
+    private String imagemUri;
+
+    private static final int PICK_IMAGE_REQUEST = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_cadastro_ong);
 
-        // Inicialize os EditTexts e o RadioGroup
         editTextNome = findViewById(R.id.editTextNome);
         editTextLink = findViewById(R.id.editTextLink);
         editTextLatitude = findViewById(R.id.editTextLatitude);
         editTextLongitude = findViewById(R.id.editTextLongitude);
         editTextCnpj = findViewById(R.id.editTextCnpj);
         radioGroupODS = findViewById(R.id.radioGroupODS);
+        editTextDescricao = findViewById(R.id.editTextDescricao);
+        editTextTelefone = findViewById(R.id.editTextTelefone);
+        buttonImagem = findViewById(R.id.buttonImagem);
 
-        // Configura o botão de salvar/cadastrar
         Button buttonSalvar = findViewById(R.id.buttonSalvar);
         buttonSalvar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                adicionarMarcador();
+                salvarOng();
             }
         });
 
-        // Adiciona o TextWatcher para formatar e permitir apagar o CNPJ
         editTextCnpj.addTextChangedListener(new TextWatcher() {
             private boolean isUpdating;
 
@@ -68,7 +75,6 @@ public class CadastroOngActivity extends AppCompatActivity {
                 }
 
                 if (cnpj.length() == 14) {
-                    // Formata o CNPJ
                     cnpj = cnpj.substring(0, 2) + "." + cnpj.substring(2, 5) + "." + cnpj.substring(5, 8)
                             + "/" + cnpj.substring(8, 12) + "-" + cnpj.substring(12, 14);
 
@@ -81,44 +87,60 @@ public class CadastroOngActivity extends AppCompatActivity {
             @Override
             public void afterTextChanged(Editable s) {}
         });
+
+        buttonImagem.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selecionarImagem();
+            }
+        });
     }
 
-    private void adicionarMarcador() {
+    private void salvarOng() {
         String nome = editTextNome.getText().toString();
         String link = editTextLink.getText().toString();
         String latitudeStr = editTextLatitude.getText().toString();
         String longitudeStr = editTextLongitude.getText().toString();
-        String cnpj = editTextCnpj.getText().toString().replaceAll("[^0-9]", ""); // Remove caracteres não numéricos
+        String cnpj = editTextCnpj.getText().toString().replaceAll("[^0-9]", "");
+        String descricao = editTextDescricao.getText().toString();
+        String telefone = editTextTelefone.getText().toString();
 
         if (nome.isEmpty() || link.isEmpty() || cnpj.isEmpty() || latitudeStr.isEmpty() || longitudeStr.isEmpty()) {
-            // Mostra uma mensagem de erro se algum campo obrigatório estiver vazio
             Toast.makeText(this, "Todos os campos são obrigatórios", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Verifica se a latitude e longitude estão no formato correto
+        double latitude;
+        double longitude;
         try {
-            double latitude = Double.parseDouble(latitudeStr);
-            double longitude = Double.parseDouble(longitudeStr);
+            latitude = Double.parseDouble(latitudeStr);
+            longitude = Double.parseDouble(longitudeStr);
             if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
                 throw new NumberFormatException();
             }
         } catch (NumberFormatException e) {
-            // Mostra uma mensagem de erro se a latitude ou longitude não estiverem no formato correto
             Toast.makeText(this, "Formato inválido para latitude ou longitude", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Verifica qual ODS foi selecionado
+        if (!CpfCnpjValidator.isCnpj(cnpj)) {
+            Toast.makeText(this, "CNPJ inválido", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         int selectedId = radioGroupODS.getCheckedRadioButtonId();
-        int ods = 0; // Valor padrão se nenhum ODS for selecionado
+        int ods = 0;
         if (selectedId != -1) {
             View radioButton = radioGroupODS.findViewById(selectedId);
             int index = radioGroupODS.indexOfChild(radioButton);
-            ods = index + 1; // Os índices no RadioGroup são baseados em zero
+            ods = index + 1;
         }
 
-        // Se chegou até aqui, todos os campos estão preenchidos e as coordenadas estão no formato correto
+        if (descricao.length() > 240) {
+            Toast.makeText(this, "A descrição deve ter no máximo 240 caracteres", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Intent intent = new Intent();
         intent.putExtra("nome", nome);
         intent.putExtra("link", link);
@@ -126,8 +148,34 @@ public class CadastroOngActivity extends AppCompatActivity {
         intent.putExtra("longitude", longitudeStr);
         intent.putExtra("cnpj", cnpj);
         intent.putExtra("ods", ods);
+        intent.putExtra("descricao", descricao);
+        intent.putExtra("telefone", telefone);
+        intent.putExtra("imagemUri", imagemUri); // Adicione a URI da imagem
         setResult(RESULT_OK, intent);
         finish();
     }
 
+    private void selecionarImagem() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/png");
+        startActivityForResult(intent, PICK_IMAGE_REQUEST);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK) {
+            if (data != null) {
+                Uri selectedImageUri = data.getData();
+                if (selectedImageUri != null && "image/png".equals(getContentResolver().getType(selectedImageUri))) {
+                    imagemUri = selectedImageUri.toString();
+                    Toast.makeText(this, "Imagem PNG selecionada", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Selecione uma imagem PNG", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
 }

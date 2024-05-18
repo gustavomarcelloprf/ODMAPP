@@ -3,7 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="#D4EFFA">
 
 
     <ScrollView
@@ -14,6 +15,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
+
+            <!-- Campo de entrada para a imagem -->
+            <Button
+                android:id="@+id/buttonImagem"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Adicionar Logo- imagem (PNG)"
+                android:layout_marginTop="16dp"
+                android:layout_gravity="center_horizontal"
+                android:background="?android:attr/selectableItemBackground"
+                android:textColor="@android:color/black" />
 
             <!-- Campo de entrada para o nome -->
             <TextView
@@ -79,6 +91,7 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"/>
 
+            <!-- Campo de entrada para o CNPJ -->
             <TextView
                 android:id="@+id/textViewCnpj"
                 android:layout_width="wrap_content"
@@ -94,6 +107,39 @@
                 android:inputType="number"
                 android:digits="0123456789"
                 android:maxEms="14"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"/>
+
+            <!-- Campo de entrada para a descrição -->
+            <TextView
+                android:id="@+id/textViewDescricao"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Descrição"
+                android:layout_marginTop="16dp"/>
+
+            <EditText
+                android:id="@+id/editTextDescricao"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Insira a descrição"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"/>
+
+            <!-- Campo de entrada para o telefone -->
+            <TextView
+                android:id="@+id/textViewTelefone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Telefone"
+                android:layout_marginTop="16dp"/>
+
+            <EditText
+                android:id="@+id/editTextTelefone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Insira o telefone"
+                android:inputType="phone"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"/>
 
@@ -223,7 +269,8 @@
                 android:text="Salvar"
                 android:layout_marginTop="24dp"
                 android:layout_gravity="center_horizontal"
-                android:background="?android:attr/selectableItemBackground"/>
+                android:background="?android:attr/selectableItemBackground"
+                android:textColor="@android:color/black" />
 
         </LinearLayout>
     </ScrollView>
