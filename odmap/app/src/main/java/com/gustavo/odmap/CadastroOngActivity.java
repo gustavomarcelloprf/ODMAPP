@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -13,6 +14,13 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+
+import java.io.IOException;
+
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class CadastroOngActivity extends AppCompatActivity {
 
@@ -25,7 +33,7 @@ public class CadastroOngActivity extends AppCompatActivity {
     private EditText editTextDescricao;
     private EditText editTextTelefone;
     private Button buttonImagem;
-    private String imagemUri;
+    private String imagemUri = "";  // Definido como string vazia por padrão
 
     private static final int PICK_IMAGE_REQUEST = 1;
 
@@ -105,8 +113,8 @@ public class CadastroOngActivity extends AppCompatActivity {
         String descricao = editTextDescricao.getText().toString();
         String telefone = editTextTelefone.getText().toString();
 
-        if (nome.isEmpty() || link.isEmpty() || cnpj.isEmpty() || latitudeStr.isEmpty() || longitudeStr.isEmpty()) {
-            Toast.makeText(this, "Todos os campos são obrigatórios", Toast.LENGTH_SHORT).show();
+        if (nome.isEmpty() || link.isEmpty() || cnpj.isEmpty() || latitudeStr.isEmpty() || longitudeStr.isEmpty() || descricao.isEmpty() || telefone.isEmpty()) {
+            Toast.makeText(this, "Todos os campos são obrigatórios, exceto a imagem", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -128,12 +136,14 @@ public class CadastroOngActivity extends AppCompatActivity {
             return;
         }
 
-        int selectedId = radioGroupODS.getCheckedRadioButtonId();
-        int ods = 0;
+        final int selectedId = radioGroupODS.getCheckedRadioButtonId();
+        final int finalOds;
         if (selectedId != -1) {
             View radioButton = radioGroupODS.findViewById(selectedId);
             int index = radioGroupODS.indexOfChild(radioButton);
-            ods = index + 1;
+            finalOds = index + 1;
+        } else {
+            finalOds = 0; // ou qualquer valor padrão que você considere apropriado
         }
 
         if (descricao.length() > 240) {
@@ -141,18 +151,44 @@ public class CadastroOngActivity extends AppCompatActivity {
             return;
         }
 
-        Intent intent = new Intent();
-        intent.putExtra("nome", nome);
-        intent.putExtra("link", link);
-        intent.putExtra("latitude", latitudeStr);
-        intent.putExtra("longitude", longitudeStr);
-        intent.putExtra("cnpj", cnpj);
-        intent.putExtra("ods", ods);
-        intent.putExtra("descricao", descricao);
-        intent.putExtra("telefone", telefone);
-        intent.putExtra("imagemUri", imagemUri); // Adicione a URI da imagem
-        setResult(RESULT_OK, intent);
-        finish();
+        OngRequest ongRequest = new OngRequest(nome, link, latitude, longitude, cnpj, descricao, telefone, finalOds, imagemUri);
+        ApiService apiService = RetrofitClient.getApiService();
+        Call<ResponseBody> call = apiService.cadastrarOng(ongRequest);
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(CadastroOngActivity.this, "ONG cadastrada com sucesso!", Toast.LENGTH_SHORT).show();
+
+                    // Envia os dados de volta para a atividade de mapa
+                    Intent resultIntent = new Intent();
+                    resultIntent.putExtra("nome", nome);
+                    resultIntent.putExtra("link", link);
+                    resultIntent.putExtra("latitude", String.valueOf(latitude));
+                    resultIntent.putExtra("longitude", String.valueOf(longitude));
+                    resultIntent.putExtra("descricao", descricao);
+                    resultIntent.putExtra("telefone", telefone);
+                    resultIntent.putExtra("imagemUri", imagemUri);
+                    resultIntent.putExtra("ods", finalOds);  // Passando ods como int
+                    setResult(RESULT_OK, resultIntent);
+                    finish();
+                } else {
+                    try {
+                        String errorBody = response.errorBody().string();
+                        Log.e("CadastroOngError", "Erro ao cadastrar: " + errorBody);
+                        Toast.makeText(CadastroOngActivity.this, "Erro ao cadastrar: " + errorBody, Toast.LENGTH_SHORT).show();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e("CadastroOngError", "Erro de rede", t);
+                Toast.makeText(CadastroOngActivity.this, "Erro de rede. Tente novamente.", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void selecionarImagem() {
